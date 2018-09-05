@@ -46,3 +46,117 @@
     4.插入到数据库，同时打印到控制台
 
 """
+
+#每次启动都需要去数据库查询当前id的最大值
+#直接查询就好了，不搞什么异步了
+
+#生成数据库操作对象
+#我们通过contextlib模块的contextmanager装饰器实现自动获取数据库操作，执行完毕后自动关闭
+import mysql.connector
+from contextlib import contextmanager
+import random, time,string
+
+string.ascii_letters
+
+@contextmanager
+def execute_mysql(isCommit = 0):
+    conn = mysql.connector.connect(user='root', password='123456', database='show_me_the_code')
+
+    cursor = conn.cursor()
+
+    yield cursor
+
+    cursor.close()
+
+    if isCommit: conn.commit()
+
+    conn.close()
+
+
+#查询id的最大值
+with execute_mysql() as cursor:
+    cursor.execute(r'SELECT COUNT(id) FROM day_two')
+
+    global maxNumber
+
+    maxNumber = cursor.fetchone()
+
+    #print(maxNumber[0])
+#
+
+# #插入
+def insert_jihuoma(count):
+
+
+    with execute_mysql(1) as cursor:
+        # print(r"insert into day_two(`id`, `key`, `isUse`,`createTime`, `useTime`) values(%d, 'xxxxx', 0, '12345789', '987654321')" %(maxNumber))
+        for x in range(count):
+            print(maxNumber[0] + x)
+            cursor.execute(
+                r"insert into day_two(`id`, `key`, `isUse`,`createTime`, `useTime`) values(%d, '%s', %d, '%s', '%s')" % (
+                maxNumber[0] + x, make_jihuoma(maxNumber[0] + x), 0, str(int(time.time() * 1000000)),  str(int(time.time() * 1000000))))
+                #maxNumber[0], make_jihuoma(), '111', '222'))
+
+            #num = num + 1
+
+
+
+
+#设计激活码
+"""
+前4位是数字+L（大写） + 空格 + ‘-’+ 空格 + 5位数字大小写字母混合
+如果id不足4位，补零
+例如:0001L - asAD9
+"""
+def make_jihuoma(id):
+
+    for x in range( 4 - len(str(id))):
+        zero =   '0' + str(id)
+
+    #print('zero',zero)
+    #print(type(zero))
+    qian = zero  + 'L'
+
+    hou = ''
+
+    #1是数字、2是小写字母、3是大写字母
+    for y in range(5):
+        q = random.randint(0,3)
+
+        if q == 1:
+            hou = hou + str(random.randint(0,9))
+        elif q == 2:
+            hou = hou + str(chr(random.randint(65, 90)))
+        else:
+            hou = hou + str(chr(random.randint(97, 122)))
+
+    return qian + ' - ' + hou
+
+#获取当前时间戳
+#print(str(int(time.time() * 1000000)))
+def get_time():
+    return str(int(time.time() * 1000000))
+
+
+#查询是否使用了
+def search_isUse(key = None):
+    if key :
+        with execute_mysql() as cursor:
+            cursor.execute(r"select `isUse` from day_two where `key` = '%s'" %(key))
+            result = cursor.fetchone()
+            return result[0]
+
+
+
+#使用激活码
+def use_jihuoma(key = None):
+    #先检查能不能用
+    if search_isUse(key) == 0:
+        #print('222')
+        with execute_mysql(1) as cursor:
+            cursor.execute(r"update day_two set `isUse` = 1, `useTime` = '%s' where `key` = '%s'" %(str(int(time.time() * 1000000)), key))
+            #print(r"update day_two set `isUse` = 1, `useTime` = '%s' where key = '%s'" %(str(int(time.time() * 1000000)), key))
+
+
+
+print(search_isUse('0459L - 3ajQz'))
